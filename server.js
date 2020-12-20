@@ -21,11 +21,6 @@ app.use((req, res, next) => {
     next();
   });
 
- 
-
-
-  
-
 
 app.use("/lobby",lobbyRouter);
 
@@ -33,16 +28,16 @@ http.listen(port)
 
 
 io.on('connection', (socket) => {
-    const id = socket.handshake.query.id;
-    socket.join(id)
-    const room = socket.handshake.query.room;
-    console.log(room)
     
-    // console.log(io.sockets.server.engine.clientsCount);  
   socket.on("sendMessage", ({msg, room})=>{
-      console.log(`getMessage/${room}`)
-      console.log(msg)
+    console.log(msg)
       io.emit(`getMessage/${room}`,{msg})
+  })
+
+  socket.on("createRoom", ({room, player})=>{
+    socket.join(room);
+    console.log(player)
+    io.to(room).emit("getPlayers",{player})
   })
 });
 
