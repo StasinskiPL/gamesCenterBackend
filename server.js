@@ -1,45 +1,102 @@
-const express = require('express');
+const express = require("express");
+const shuffle = require("lodash").shuffle;
 const app = express();
-const http = require('http').createServer(app);
-global.io = require('socket.io')(http, {
-    cors: {
-        origin: "http://localhost:3000",
-        methods: ["GET", "POST"]
-      }
+const controller = require("./controllers/checkWinner");
+const logic = require("./controllers/logic");
+const http = require("http").createServer(app);
+global.io = require("socket.io")(http, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
 });
 
 const port = process.env.PORT || 5050;
 
-const lobbyRouter = require("./routes/lobby");
-
 app.use(express.json());
 
 app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PATCH");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    next();
-  });
-
-
-app.use("/lobby",lobbyRouter);
-
-http.listen(port)
-
-
-io.on('connection', (socket) => {
-    
-  socket.on("sendMessage", ({msg, room})=>{
-    console.log(msg)
-      io.emit(`getMessage/${room}`,{msg})
-  })
-
-  socket.on("createRoom", ({room, player})=>{
-    socket.join(room);
-    console.log(player)
-    io.to(room).emit("getPlayers",{player})
-  })
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PATCH");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  next();
 });
 
+http.listen(port);
+
+io.on("connection", (socket) => {
+  socket.on("sendMessage", ({ msg, room }) => {
+    io.emit(`getMessage/${room}`, { msg });
+  });
+
+  socket.on("createRoom", ({ room, player }) => {
+    socket.join(room);
+    io.to(room).emit("getPlayers", { player });
+  });
+  socket.on("restart", ({ room }) => {
+    io.to(room).emit("restart");
+  });
+
+  socket.on("gameStarted", ({ room, players }) => {
+    io.to(room).emit("gameStarted");
+
+    io.to(room).emit("gamePlayersTurns", { players: shuffle(players) });
+  });
+
+  // TicTacToe Cell
+  socket.on("TicTacToeCellTaken", ({ room, id, userId, players, grid }) => {
+    playerIndex = players.findIndex((p) => p.id === userId);
+    playerIndex === players.length - 1 ? (playerIndex = 0) : playerIndex++;
+    symbol = playerIndex === 0 ? "X" : "O";
+
+    io.to(room).emit("TicTacToeCellTaken", { id, symbol });
+
+    io.to(room).emit("changeTurn", { player: players[playerIndex] });
+
+    grid[id].taken = true;
+    grid[id].symbol = symbol;
+    const result = controller.checkWinTicTacToe(grid);
+    if (result) {
+      if (result === "DRAW") {
+        io.to(room).emit("gameResult", { result: result });
+      } else {
+        const winner = result === "X" ? players[1] : players[0];
+        io.to(room).emit("gameResult", { result: "FINISHED", winner: winner });
+      }
+    }
+  });
+
+  // ConnectFour Cell
+  socket.on("ConnectFourCellTaken", ({ room, grid, cellId, userId,color, players,gravitation }) => {
+    playerIndex = players.findIndex((p) => p.id === userId);
+    playerIndex === players.length - 1 ? (playerIndex = 0) : playerIndex++;
 
 
+    io.to(room).emit("changeTurn", { player: players[playerIndex] });
+    
+    // gravitation
+    if(gravitation){
+      cellId = logic.connectFourGravitation(grid,cellId,color);
+      console.log(grid)
+    }
+      grid[cellId].taken = true;
+      grid[cellId].color = color;
+    io.to(room).emit("ConnectFourCellTaken",{ id:cellId });
+
+
+    const result = controller.checkWinConnectFour(grid);
+    if (result) {
+      console.log(result)
+      if (result === "DRAW") {
+        io.to(room).emit("gameResult", { result: result });
+      } else {
+        const winner = result === "GREEN" ? players[0] : players[1];
+        io.to(room).emit("gameResult", { result: "FINISHED", winner: winner });
+      }
+    }
+  });
+  // connectFour Gravitation
+  socket.on("changeGravitation",({room,value})=>{
+    io.to(room).emit("changeGravitation", {value:value})
+})
+});
