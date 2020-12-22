@@ -18,7 +18,7 @@ exports.checkWinTicTacToe = (grid) => {
     if (
       grid[0].taken &&
       grid[0].symbol === grid[4].symbol &&
-      grid[0].symbol === grid[7].symbol
+      grid[0].symbol === grid[8].symbol
     ) {
       return grid[0].symbol;
     }
@@ -71,4 +71,23 @@ exports.checkWinTicTacToe = (grid) => {
     }
   }
   return null;
+}
+
+exports.checkWinCheckers = (grid) =>{
+  const result = grid.reduce((total,next)=>{
+    if(next.pawn==="PAWN_WHITE"){
+      total.white = total.white+1
+    } else if(next.pawn==="PAWN_BLACK"){
+      total.black = total.black +1
+    }
+    return total
+  },({white:0,
+  black:0}))
+
+    if(result.white === 0){
+      return "BLACK"
+    }
+    if(result.black === 0){
+      return "WHITE"
+    }
 }

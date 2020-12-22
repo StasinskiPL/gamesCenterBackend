@@ -29,24 +29,40 @@ io.on("connection", (socket) => {
     io.emit(`getMessage/${room}`, { msg });
   });
 
+  // disconnect
+  socket.on("disconnect", () => {
+    if (socket.user) {
+      io.to(socket.user.room).emit("userLeave", { userId: socket.user.id });
+      io.to(socket.user.room).emit("gameResult", { result: "OPPONENTLEFT" });
+    }
+  });
+
+  // createLobby
   socket.on("createRoom", ({ room, player }) => {
     socket.join(room);
-    io.to(room).emit("getPlayers", { player });
+    socket.user = player;
+    socket.user.room = room;
+    if (room !== "" && room) {
+      io.to(room).emit("getPlayers", { player });
+    }
   });
+
+  // restart
   socket.on("restart", ({ room }) => {
     io.to(room).emit("restart");
   });
 
+  // starting game
   socket.on("gameStarted", ({ room, players }) => {
     io.to(room).emit("gameStarted");
-
+    // shuffle players
     io.to(room).emit("gamePlayersTurns", { players: shuffle(players) });
   });
 
   // TicTacToe Cell
   socket.on("TicTacToeCellTaken", ({ room, id, userId, players, grid }) => {
     playerIndex = players.findIndex((p) => p.id === userId);
-    playerIndex === players.length - 1 ? (playerIndex = 0) : playerIndex++;
+    playerIndex === 1 ? (playerIndex = 0) : playerIndex++;
     symbol = playerIndex === 0 ? "X" : "O";
 
     io.to(room).emit("TicTacToeCellTaken", { id, symbol });
@@ -67,36 +83,61 @@ io.on("connection", (socket) => {
   });
 
   // ConnectFour Cell
-  socket.on("ConnectFourCellTaken", ({ room, grid, cellId, userId,color, players,gravitation }) => {
-    playerIndex = players.findIndex((p) => p.id === userId);
-    playerIndex === players.length - 1 ? (playerIndex = 0) : playerIndex++;
+  socket.on(
+    "ConnectFourCellTaken",
+    ({ room, grid, cellId, userId, color, players, gravitation }) => {
+      playerIndex = players.findIndex((p) => p.id === userId);
+      playerIndex === 1 ? (playerIndex = 0) : playerIndex++;
 
+      io.to(room).emit("changeTurn", { player: players[playerIndex] });
 
-    io.to(room).emit("changeTurn", { player: players[playerIndex] });
-    
-    // gravitation
-    if(gravitation){
-      cellId = logic.connectFourGravitation(grid,cellId,color);
-      console.log(grid)
-    }
+      // gravitation
+      if (gravitation) {
+        cellId = logic.connectFourGravitation(grid, cellId, color);
+        console.log(grid);
+      }
       grid[cellId].taken = true;
       grid[cellId].color = color;
-    io.to(room).emit("ConnectFourCellTaken",{ id:cellId });
+      io.to(room).emit("ConnectFourCellTaken", { id: cellId });
 
-
-    const result = controller.checkWinConnectFour(grid);
-    if (result) {
-      console.log(result)
-      if (result === "DRAW") {
-        io.to(room).emit("gameResult", { result: result });
-      } else {
-        const winner = result === "GREEN" ? players[0] : players[1];
-        io.to(room).emit("gameResult", { result: "FINISHED", winner: winner });
+      const result = controller.checkWinConnectFour(grid);
+      if (result) {
+        console.log(result);
+        if (result === "DRAW") {
+          io.to(room).emit("gameResult", { result: result });
+        } else {
+          const winner = result === "GREEN" ? players[0] : players[1];
+          io.to(room).emit("gameResult", {
+            result: "FINISHED",
+            winner: winner,
+          });
+        }
       }
     }
-  });
+  );
   // connectFour Gravitation
-  socket.on("changeGravitation",({room,value})=>{
-    io.to(room).emit("changeGravitation", {value:value})
-})
+  socket.on("changeGravitation", ({ room, value }) => {
+    io.to(room).emit("changeGravitation", { value: value });
+  });
+
+  // checkers
+  socket.on("updateGrid", ({ updatedGrid, room, players, userId }) => {
+    playerIndex = players.findIndex((p) => p.id === userId);
+    playerIndex === 1 ? (playerIndex = 0) : playerIndex++;
+    io.to(room).emit("changeTurn", { player: players[playerIndex] });
+
+    // check Winners
+
+    
+      io.to(room).emit("updateGrid", { room: room, updatedGrid: updatedGrid });
+      const result = controller.checkWinCheckers(updatedGrid);
+      if (result) {
+          const winner = result === "WHITE" ? players[0] : players[1];
+          io.to(room).emit("gameResult", {
+            result: "FINISHED",
+            winner: winner,
+          });
+        }
+    
+  });
 });
