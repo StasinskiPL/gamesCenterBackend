@@ -6,7 +6,7 @@ const logic = require("./controllers/logic");
 const http = require("http").createServer(app);
 global.io = require("socket.io")(http, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "https://gamescenter-ds.herokuapp.com/",
     methods: ["GET", "POST"],
   },
 });
@@ -94,7 +94,6 @@ io.on("connection", (socket) => {
       // gravitation
       if (gravitation) {
         cellId = logic.connectFourGravitation(grid, cellId, color);
-        console.log(grid);
       }
       grid[cellId].taken = true;
       grid[cellId].color = color;
@@ -102,7 +101,6 @@ io.on("connection", (socket) => {
 
       const result = controller.checkWinConnectFour(grid);
       if (result) {
-        console.log(result);
         if (result === "DRAW") {
           io.to(room).emit("gameResult", { result: result });
         } else {
@@ -128,16 +126,14 @@ io.on("connection", (socket) => {
 
     // check Winners
 
-    
-      io.to(room).emit("updateGrid", { room: room, updatedGrid: updatedGrid });
-      const result = controller.checkWinCheckers(updatedGrid);
-      if (result) {
-          const winner = result === "WHITE" ? players[0] : players[1];
-          io.to(room).emit("gameResult", {
-            result: "FINISHED",
-            winner: winner,
-          });
-        }
-    
+    io.to(room).emit("updateGrid", { room: room, updatedGrid: updatedGrid });
+    const result = controller.checkWinCheckers(updatedGrid);
+    if (result) {
+      const winner = result === "WHITE" ? players[0] : players[1];
+      io.to(room).emit("gameResult", {
+        result: "FINISHED",
+        winner: winner,
+      });
+    }
   });
 });
