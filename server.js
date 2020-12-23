@@ -6,7 +6,7 @@ const logic = require("./controllers/logic");
 const http = require("http").createServer(app);
 global.io = require("socket.io")(http, {
   cors: {
-    origin: "https://gamescenter-ds.herokuapp.com/",
+    origin: "https://gamescenter-ds.herokuapp.com",
     methods: ["GET", "POST"],
   },
 });
