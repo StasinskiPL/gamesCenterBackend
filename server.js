@@ -26,7 +26,7 @@ http.listen(port);
 
 io.on("connection", (socket) => {
   socket.on("sendMessage", ({ msg, room }) => {
-    io.emit(`getMessage/${room}`, { msg });
+    io.to(room).emit("getMessage", { msg });
   });
 
   // disconnect
@@ -54,9 +54,7 @@ io.on("connection", (socket) => {
 
   // starting game
   socket.on("gameStarted", ({ room, players }) => {
-    io.to(room).emit("gameStarted");
-    // shuffle players
-    io.to(room).emit("gamePlayersTurns", { players: shuffle(players) });
+    io.to(room).emit("gameStarted", { players: shuffle(players) });
   });
 
   // TicTacToe Cell
