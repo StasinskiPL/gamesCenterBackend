@@ -5,12 +5,8 @@ const controller = require("./controllers/checkWinner");
 const logic = require("./controllers/logic");
 const http = require("http").createServer(app);
 global.io = require("socket.io")(http, {
-  // cors: {
-  //   origin: "https://gamescenter-ds.herokuapp.com",
-  //   methods: ["GET", "POST"],
-  // },
-   cors: {
-    origin: "http://localhost:3000",
+  cors: {
+    origin: "https://gamescenter-ds.herokuapp.com",
     methods: ["GET", "POST"],
   },
 });
